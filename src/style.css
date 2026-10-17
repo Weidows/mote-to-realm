@@ -519,6 +519,10 @@ canvas {
 @media (max-width: 420px) {
   .tagline { font-size: 8.5px; letter-spacing: 0.18em; }
   .title { font-size: 25px; }
+  /* 窄屏去掉图鉴文字，靠球内字形辨识，保证 11 阶排成一行 */
+  .codex-list { gap: 6px; }
+  .codex-item span { display: none; }
+  .codex-item i { width: 26px; height: 26px; font-size: 11px; }
 }
 
 @media (max-height: 700px) {
@@ -529,4 +533,75 @@ canvas {
 
 @media (prefers-reduced-motion: reduce) {
   * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+/* ------------------------------------------------------------ 主题皮肤
+ * 第二套皮「和成天下」：槟榔红 + 焦糖金，暖调。
+ * 结构、尺寸、栅格完全共用，只换色与字色。
+ */
+:root[data-theme="hecheng"] {
+  --ink: #110b07;
+  --text: #f2e4cb;
+  --muted: #a28f76;
+  --gold: #e9a93f;
+  --gold-soft: rgba(233, 169, 63, 0.3);
+  --gold-faint: rgba(233, 169, 63, 0.15);
+  --betel: #c02a1e;
+}
+
+:root[data-theme="hecheng"] body {
+  background:
+    radial-gradient(1200px 700px at 50% -14%, #33200f 0%, rgba(51, 32, 15, 0) 58%),
+    radial-gradient(900px 620px at 84% 112%, #2e0e09 0%, rgba(46, 14, 9, 0) 58%),
+    var(--ink);
+}
+
+:root[data-theme="hecheng"] .title {
+  background: linear-gradient(180deg, #fff3d6 0%, #f3b451 48%, #a8231b 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  filter: drop-shadow(0 0 26px rgba(233, 169, 63, 0.26));
+}
+
+:root[data-theme="hecheng"] .tagline { color: #a2917a; }
+
+:root[data-theme="hecheng"] .tagline i {
+  background: linear-gradient(90deg, transparent, rgba(233, 169, 63, 0.55));
+}
+
+:root[data-theme="hecheng"] .tagline i:last-child {
+  background: linear-gradient(90deg, rgba(233, 169, 63, 0.55), transparent);
+}
+
+:root[data-theme="hecheng"] .board-wrap {
+  background: #0c0705;
+  box-shadow:
+    0 34px 80px -34px rgba(0, 0, 0, 0.95),
+    0 0 0 1px rgba(233, 169, 63, 0.22),
+    0 0 60px -30px rgba(233, 169, 63, 0.5),
+    inset 0 0 70px rgba(0, 0, 0, 0.9);
+}
+
+:root[data-theme="hecheng"] .board-wrap::after {
+  border-color: rgba(233, 169, 63, 0.13);
+}
+
+:root[data-theme="hecheng"] .seal {
+  color: rgba(196, 46, 32, 0.72);
+  border-color: rgba(196, 46, 32, 0.48);
+}
+
+:root[data-theme="hecheng"] .btn-primary {
+  color: #2a1205;
+  background: linear-gradient(180deg, #ffe1a1 0%, #e9a93f 52%, #ab4a1c 100%);
+  box-shadow: 0 14px 34px -14px rgba(233, 169, 63, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+:root[data-theme="hecheng"] .btn-primary:hover {
+  box-shadow: 0 18px 40px -14px rgba(233, 169, 63, 1), inset 0 1px 0 rgba(255, 255, 255, 0.65);
+}
+
+:root[data-theme="hecheng"] .ghost-btn {
+  color: #f0c477;
+  border-color: rgba(233, 169, 63, 0.34);
 }

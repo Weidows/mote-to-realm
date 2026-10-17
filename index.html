@@ -14,8 +14,8 @@
 
 <div class="app">
   <header class="masthead">
-    <h1 class="title">合成天下</h1>
-    <p class="tagline"><i></i>微尘起于混沌 · 一念可造山河<i></i></p>
+    <h1 class="title" id="gameTitle">合成天下</h1>
+    <p class="tagline"><i></i><span id="tagline">微尘起于混沌 · 一念可造山河</span><i></i></p>
   </header>
 
   <main class="stage">
@@ -49,12 +49,13 @@
 
       <div class="hud-actions">
         <button class="ghost-btn" id="soundBtn" type="button" aria-pressed="true">音效 · 开</button>
+        <button class="ghost-btn" id="themeBtn" type="button" title="切换主题">主题 · 古韵</button>
         <button class="ghost-btn" id="restartBtn" type="button">重开一局</button>
       </div>
 
-      <p class="hint">移动瞄准 · 点击落下<br />← → 微调 · 空格落下</p>
+      <p class="hint" id="hint">移动瞄准 · 点击落下<br />← → 微调 · 空格落下</p>
 
-      <div class="seal" aria-hidden="true">造化<br />由心</div>
+      <div class="seal" id="seal" aria-hidden="true">造化<br />由心</div>
     </aside>
   </main>
 
@@ -66,6 +67,7 @@
 <noscript><p style="color:#ddd;text-align:center;padding:40px">需要开启 JavaScript 才能造物。</p></noscript>
 
 <script src="src/levels.js"></script>
+<script src="src/themes.js"></script>
 <script src="src/audio.js"></script>
 <script src="src/physics.js"></script>
 <script src="src/game.js"></script>

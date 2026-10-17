@@ -5,8 +5,13 @@
   'use strict';
 
   const SH = window.SH;
-  const LEVELS = SH.LEVELS;
-  const MAX_LEVEL = SH.MAX_LEVEL;
+
+  // 主题：可在局中切换，造物半径两套一致，故不影响已落下的球
+  let THEME = SH.THEMES[0];
+  let LEVELS = THEME.levels;
+  let MAX_LEVEL = LEVELS.length - 1;
+  let GLYPH_FONT = THEME.glyphFont;
+  let PAL = THEME.palette;
 
   // 逻辑画布尺寸（渲染时等比缩放到实际像素）
   const W = 460;
@@ -16,7 +21,6 @@
   const FLOOR_Y = H - 9;      // 地面（留出一线器底）
   const COOLDOWN = 0.3;       // 两次落子间隔
   const DANGER_LIMIT = 1.7;   // 越线多久判负
-  const GLYPH_FONT = '"Songti SC","STSong","SimSun","Noto Serif SC",serif';
 
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
   const rand = (a, b) => a + Math.random() * (b - a);
@@ -37,8 +41,14 @@
     ovResult: document.getElementById('ovResult'),
     ovBtn: document.getElementById('ovBtn'),
     soundBtn: document.getElementById('soundBtn'),
+    themeBtn: document.getElementById('themeBtn'),
     restartBtn: document.getElementById('restartBtn'),
     banner: document.getElementById('banner'),
+    title: document.getElementById('gameTitle'),
+    tagline: document.getElementById('tagline'),
+    hint: document.getElementById('hint'),
+    seal: document.getElementById('seal'),
+    favicon: document.querySelector('link[rel="icon"]'),
   };
 
   // ---------------------------------------------------------------- 存档
@@ -56,9 +66,11 @@
 
   const state = {
     phase: 'title',           // title | playing | over
+    overlayKind: 'title',     // 当前遮罩：title | over
     score: 0,
-    best: Number(load('ht.best', 0)) || 0,
-    codex: new Set(load('ht.codex', [0])),
+    best: 0,
+    codex: new Set([0]),
+    runHighest: 0,
     next: 0,
     aimX: W / 2,
     cooldown: 0,
@@ -66,6 +78,16 @@
     shake: 0,
     danger: 0,
   };
+
+  const bestKey = () => 'ht.best.' + THEME.id;
+  const codexKey = () => 'ht.codex.' + THEME.id;
+
+  function loadThemeSave() {
+    state.best = Number(load(bestKey(), 0)) || 0;
+    const arr = load(codexKey(), [0]);
+    state.codex = new Set(Array.isArray(arr) ? arr : [0]);
+    state.codex.add(0);
+  }
 
   const particles = [];
   const rings = [];
@@ -110,28 +132,29 @@
     SH.Audio.merge(level, result === null);
 
     if (result === null) {
-      // 两枚「天下」相合 —— 天下大同
+      // 两枚顶阶相合 —— 大同
+      const top = LEVELS[MAX_LEVEL].glow;
       addScore(5000);
-      rings.push({ x, y, r: 8, vr: 1000, life: 0.9, max: 0.9, color: '#fff0b0', width: 6 });
-      popups.push({ x: W / 2, y: H * 0.34, text: '天下大同 +5000', life: 1.8, max: 1.8, color: '#ffe9a8', size: 24 });
+      rings.push({ x, y, r: 8, vr: 1000, life: 0.9, max: 0.9, color: top, width: 6 });
+      popups.push({ x: W / 2, y: H * 0.34, text: THEME.copy.allPopup, life: 1.8, max: 1.8, color: top, size: 24 });
       state.shake = 24;
-      showBanner('天下大同 · 万象归一', '#ffe9a8');
+      showBanner(THEME.copy.allBanner, top);
       return;
     }
 
     const isNew = discover(result);
     if (result > state.runHighest) state.runHighest = result;
     if (result === MAX_LEVEL) {
-      showBanner('天下已成', '#ffe9a8');
+      showBanner(THEME.copy.maxBanner, LEVELS[MAX_LEVEL].glow);
     } else if (isNew && result >= 3) {
-      showBanner('新境 · ' + LEVELS[result].name, def.glow);
+      showBanner(THEME.copy.newRealm + LEVELS[result].name, def.glow);
     }
   }
 
   function discover(level) {
     if (state.codex.has(level)) return false;
     state.codex.add(level);
-    save('ht.codex', [...state.codex].sort((a, b) => a - b));
+    save(codexKey(), [...state.codex].sort((a, b) => a - b));
     renderCodex();
     return true;
   }
@@ -141,7 +164,7 @@
     state.score += n;
     if (state.score > state.best) {
       state.best = state.score;
-      save('ht.best', state.best);
+      save(bestKey(), state.best);
       el.best.textContent = state.best;
     }
     el.score.textContent = state.score;
@@ -222,16 +245,36 @@
     SH.Audio.over();
     if (state.score > state.best) {
       state.best = state.score;
-      save('ht.best', state.best);
+      save(bestKey(), state.best);
     }
     el.best.textContent = state.best;
+    showOver();
+  }
+
+  /** 结算遮罩：跟随主题文案重绘 */
+  function showOver() {
+    const c = THEME.copy;
     const reached = state.runHighest || 0;
     showOverlay({
-      eyebrow: '造化止于此',
-      title: '乾坤已满',
-      desc: '这一方天地，再也容不下一物。',
-      result: '本局 <b>' + state.score + '</b> 分 · 最高造物 <b>' + LEVELS[reached].name + '</b>',
-      btn: '再来一局',
+      kind: 'over',
+      eyebrow: c.overEyebrow,
+      title: c.overTitle,
+      desc: c.overDesc,
+      result: '本局 <b>' + state.score + '</b> 分 · ' + c.highestLabel + ' <b>' + LEVELS[reached].name + '</b>',
+      btn: c.overBtn,
+    });
+  }
+
+  /** 开场遮罩：跟随主题文案重绘 */
+  function showTitle() {
+    const c = THEME.copy;
+    showOverlay({
+      kind: 'title',
+      eyebrow: c.startEyebrow,
+      title: c.startTitle,
+      desc: c.startDesc,
+      result: '',
+      btn: c.startBtn,
     });
   }
 
@@ -329,6 +372,7 @@
 
   // ---------------------------------------------------------------- 遮罩
   function showOverlay(o) {
+    state.overlayKind = o.kind || null;
     el.ovEyebrow.textContent = o.eyebrow;
     el.ovTitle.textContent = o.title;
     el.ovDesc.innerHTML = o.desc;
@@ -338,7 +382,67 @@
   }
 
   function hideOverlay() {
+    state.overlayKind = null;
     el.overlay.classList.remove('show');
+  }
+
+  // ---------------------------------------------------------------- 主题
+  function setFavicon(t) {
+    if (!el.favicon) return;
+    const glyph = t.levels[t.levels.length - 1].glyph;
+    const bg = t.id === 'hecheng' ? '#a8231b' : '#090d10';
+    const fg = t.id === 'hecheng' ? '#ffe9a8' : '#d9b26a';
+    const svg =
+      "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>" +
+      "<rect width='64' height='64' rx='14' fill='" + bg + "'/>" +
+      "<text x='32' y='45' font-size='38' text-anchor='middle' fill='" + fg + "' font-family='serif'>" + glyph + "</text>" +
+      '</svg>';
+    el.favicon.href = 'data:image/svg+xml,' + encodeURIComponent(svg);
+  }
+
+  /**
+   * 套用主题。造物等级只换外观（半径一致），
+   * 因此正在下落、堆叠的球会原地换皮，不动物理状态。
+   */
+  function applyTheme(id, opts) {
+    const t = SH.findTheme(id);
+    THEME = t;
+    LEVELS = t.levels;
+    MAX_LEVEL = LEVELS.length - 1;
+    GLYPH_FONT = t.glyphFont;
+    PAL = t.palette;
+    if (world) world.levels = LEVELS;
+
+    document.documentElement.setAttribute('data-theme', t.id);
+    document.title = t.title + ' · ' + (t.id === 'hecheng' ? '越嚼越香' : '万物由微尘起');
+    el.title.textContent = t.title;
+    el.tagline.textContent = t.tagline;
+    el.seal.innerHTML = t.seal;
+    el.hint.innerHTML = t.copy.hint;
+    el.themeBtn.textContent = '主题 · ' + t.tag;
+    el.themeBtn.title = '切换主题（当前「' + t.title + '」，快捷键 T）';
+    el.themeBtn.setAttribute('aria-label', '切换主题，当前「' + t.title + '」');
+    setFavicon(t);
+
+    loadThemeSave();
+    el.codex.innerHTML = '';
+    renderCodex();
+    updateHud();
+    if (state.overlayKind === 'title') showTitle();
+    else if (state.overlayKind === 'over') showOver();
+
+    if (!opts || opts.persist !== false) save(SH.THEME_KEY, t.id);
+  }
+
+  function toggleTheme() {
+    const next = THEME.id === 'tianxia' ? 'hecheng' : 'tianxia';
+    applyTheme(next);
+    // 换皮时给一点声光提示
+    const def = LEVELS[Math.min(3, MAX_LEVEL)];
+    burst(W / 2, H * 0.42, def, 26);
+    rings.push({ x: W / 2, y: H * 0.42, r: 10, vr: 520, life: 0.7, max: 0.7, color: def.glow, width: 2 });
+    SH.Audio.unlock();
+    SH.Audio.merge(2, false);
   }
 
   // ---------------------------------------------------------------- 绘制
@@ -366,16 +470,16 @@
 
   function drawBackground() {
     const g = ctx.createLinearGradient(0, 0, 0, H);
-    g.addColorStop(0, '#0b141b');
-    g.addColorStop(0.55, '#0a1014');
-    g.addColorStop(1, '#0c1013');
+    g.addColorStop(0, PAL.bg[0]);
+    g.addColorStop(0.55, PAL.bg[1]);
+    g.addColorStop(1, PAL.bg[2]);
     ctx.fillStyle = g;
     ctx.fillRect(-4, -4, W + 8, H + 8);
 
     // 顶部一线天光
     const tg = ctx.createRadialGradient(W / 2, -80, 20, W / 2, -80, 420);
-    tg.addColorStop(0, 'rgba(120,160,190,.16)');
-    tg.addColorStop(1, 'rgba(120,160,190,0)');
+    tg.addColorStop(0, 'rgba(' + PAL.sky + ',.16)');
+    tg.addColorStop(1, 'rgba(' + PAL.sky + ',0)');
     ctx.fillStyle = tg;
     ctx.fillRect(0, 0, W, 320);
 
@@ -391,7 +495,7 @@
       const s = stars[i];
       const a = s.a * (0.55 + 0.45 * Math.sin(t * 1.2 + s.p));
       ctx.globalAlpha = a;
-      ctx.fillStyle = '#dce8f0';
+      ctx.fillStyle = PAL.star;
       ctx.beginPath();
       ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
       ctx.fill();
@@ -402,13 +506,13 @@
   /** 器底：一道极淡的金线，标出球停驻之处 */
   function drawFloor() {
     const g = ctx.createLinearGradient(0, FLOOR_Y - 24, 0, H);
-    g.addColorStop(0, 'rgba(217,178,106,0)');
-    g.addColorStop(0.72, 'rgba(217,178,106,.045)');
-    g.addColorStop(1, 'rgba(217,178,106,.13)');
+    g.addColorStop(0, 'rgba(' + PAL.floor + ',0)');
+    g.addColorStop(0.72, 'rgba(' + PAL.floor + ',.045)');
+    g.addColorStop(1, 'rgba(' + PAL.floor + ',.13)');
     ctx.fillStyle = g;
     ctx.fillRect(0, FLOOR_Y - 24, W, H - FLOOR_Y + 24);
 
-    ctx.strokeStyle = 'rgba(217,178,106,.2)';
+    ctx.strokeStyle = 'rgba(' + PAL.floor + ',.2)';
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(0, FLOOR_Y + 0.5);
@@ -421,7 +525,7 @@
     ctx.save();
     ctx.setLineDash([9, 9]);
     ctx.lineWidth = 1.3;
-    ctx.strokeStyle = 'rgba(217,178,106,' + (0.2 + t * 0.55) + ')';
+    ctx.strokeStyle = 'rgba(' + PAL.floor + ',' + (0.2 + t * 0.55) + ')';
     ctx.beginPath();
     ctx.moveTo(0, DANGER_Y);
     ctx.lineTo(W, DANGER_Y);
@@ -569,7 +673,7 @@
     ctx.save();
     ctx.setLineDash([5, 11]);
     ctx.lineWidth = 1.5;
-    ctx.strokeStyle = 'rgba(217,178,106,' + (ready ? 0.26 : 0.1) + ')';
+    ctx.strokeStyle = 'rgba(' + PAL.floor + ',' + (ready ? 0.26 : 0.1) + ')';
     ctx.beginPath();
     ctx.moveTo(x, DROP_Y + r + 8);
     ctx.lineTo(x, FLOOR_Y - 2);
@@ -635,11 +739,14 @@
       }
     } else if (e.key.toLowerCase() === 'r') {
       startGame();
+    } else if (e.key.toLowerCase() === 't') {
+      toggleTheme();
     }
   });
 
   el.ovBtn.addEventListener('click', startGame);
   el.restartBtn.addEventListener('click', startGame);
+  el.themeBtn.addEventListener('click', toggleTheme);
 
   el.soundBtn.addEventListener('click', function () {
     const on = !SH.Audio.isEnabled();
@@ -672,7 +779,6 @@
   // ---------------------------------------------------------------- 启动
   function boot() {
     seedStars();
-    renderCodex();
     world = createWorld();
     state.next = SH.pickSpawn();
 
@@ -680,16 +786,11 @@
     ro.observe(canvas);
     resize();
 
+    // 恢复上次使用的主题，再按其文案绘制开场遮罩
+    applyTheme(load(SH.THEME_KEY, SH.THEMES[0].id), { persist: false });
+    showTitle();
     updateHud();
     draw();
-
-    showOverlay({
-      eyebrow: '混沌初开',
-      title: '合成天下',
-      desc: '同物相触，化为更高之物。<br>从一粒微尘起，看看你能造到哪一步。',
-      result: '',
-      btn: '开始造物',
-    });
 
     requestAnimationFrame(function (t) {
       last = t;
@@ -704,8 +805,11 @@
     window.__HT = {
       state: state,
       get world() { return world; },
+      get theme() { return THEME.id; },
       startGame: startGame,
       drop: drop,
+      applyTheme: applyTheme,
+      toggleTheme: toggleTheme,
       addBall: function (x, y, level) { return world.add(x, y, level); },
     };
   }
