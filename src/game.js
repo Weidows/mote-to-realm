@@ -7,7 +7,7 @@
   const SH = window.SH;
 
   // 主题：可在局中切换，造物半径两套一致，故不影响已落下的球
-  let THEME = SH.THEMES[0];
+  let THEME = SH.findTheme(SH.DEFAULT_THEME_ID);
   let LEVELS = THEME.levels;
   let MAX_LEVEL = LEVELS.length - 1;
   let GLYPH_FONT = THEME.glyphFont;
@@ -414,7 +414,7 @@
     if (world) world.levels = LEVELS;
 
     document.documentElement.setAttribute('data-theme', t.id);
-    document.title = t.title + ' · ' + (t.id === 'hecheng' ? '越嚼越香' : '万物由微尘起');
+    document.title = t.title;
     el.title.textContent = t.title;
     el.tagline.textContent = t.tagline;
     el.seal.innerHTML = t.seal;
@@ -787,7 +787,7 @@
     resize();
 
     // 恢复上次使用的主题，再按其文案绘制开场遮罩
-    applyTheme(load(SH.THEME_KEY, SH.THEMES[0].id), { persist: false });
+    applyTheme(load(SH.THEME_KEY, SH.DEFAULT_THEME_ID), { persist: false });
     showTitle();
     updateHud();
     draw();

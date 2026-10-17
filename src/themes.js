@@ -94,9 +94,12 @@ window.SH = window.SH || {};
 
   SH.THEMES = THEMES;
   SH.THEME_KEY = 'ht.theme';
+  // 首次打开用哪套皮肤（用户可随时切换，选择会覆盖它）
+  SH.DEFAULT_THEME_ID = 'hecheng';
 
   SH.findTheme = function (id) {
     for (let i = 0; i < THEMES.length; i++) if (THEMES[i].id === id) return THEMES[i];
+    for (let i = 0; i < THEMES.length; i++) if (THEMES[i].id === SH.DEFAULT_THEME_ID) return THEMES[i];
     return THEMES[0];
   };
 })(window.SH);
