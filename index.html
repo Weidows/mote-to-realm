@@ -3,68 +3,96 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<meta name="theme-color" content="#110b07" />
-<meta name="description" content="合成天下 —— 一款网页合成小游戏。两枚同款相触，合成更高一档。内置「和成天下」「古韵」两套皮肤。" />
+<meta name="theme-color" content="#f6e9d6" />
+<meta name="description" content="合成天下 —— 一款网页合成小游戏。两枚同款相触，合成更高一档；内置「和成天下」与「古韵」两套皮肤。" />
 <title>和成天下</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23a8231b'/%3E%3Ctext x='32' y='45' font-size='38' text-anchor='middle' fill='%23ffe9a8' font-family='serif'%3E龙%3C/text%3E%3C/svg%3E" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='10' fill='%23b8231b'/%3E%3Ctext x='32' y='45' font-size='38' text-anchor='middle' fill='%23fff2d0' font-family='serif'%3E龙%3C/text%3E%3C/svg%3E" />
 <link rel="stylesheet" href="src/style.css" />
 </head>
 <body>
 <div class="grain" aria-hidden="true"></div>
 
-<div class="app">
-  <header class="masthead">
-    <h1 class="title" id="gameTitle">和成天下</h1>
-    <p class="tagline"><i></i><span id="tagline">一粒青果 · 嚼出个天下</span><i></i></p>
+<div class="desk">
+  <header class="topbar">
+    <div class="brand">
+      <span class="seal" id="seal" aria-hidden="true">龙</span>
+      <div class="brand-copy">
+        <h1 id="gameTitle">和成天下</h1>
+        <p id="tagline">一粒青果，嚼出个天下</p>
+      </div>
+    </div>
+
+    <div class="tools">
+      <button class="tool" id="themeBtn" type="button" title="切换主题（T）">换主题<em id="themeTag">槟榔</em></button>
+      <button class="tool" id="soundBtn" type="button" aria-pressed="true" title="音效开关">音效<em id="soundState">开</em></button>
+      <button class="tool" id="restartBtn" type="button" title="重开一局（R）">重开</button>
+    </div>
   </header>
 
-  <main class="stage">
-    <section class="board-wrap" id="boardWrap">
-      <canvas id="game" aria-label="游戏区"></canvas>
+  <main class="board-area">
+    <aside class="col col-left">
+      <div class="score-block">
+        <span class="cap">得分</span>
+        <strong class="num" id="score">0</strong>
+        <span class="cap best">最高 <b id="best">0</b></span>
+      </div>
+
+      <div class="ladder-box">
+        <span class="cap">造物阶次</span>
+        <ol class="ladder" id="ladder"></ol>
+      </div>
+
+      <p class="fineprint" id="fineprint"></p>
+    </aside>
+
+    <div class="tray" id="tray">
+      <canvas id="game" aria-label="游戏区：点击落子"></canvas>
       <div class="banner" id="banner" aria-live="polite"></div>
 
-      <div class="overlay show" id="overlay">
-        <div class="panel">
-          <p class="eyebrow" id="ovEyebrow">拆袋</p>
+      <div class="combo" id="combo" aria-live="polite">
+        <div class="combo-head"><b id="comboMult">×2</b><span>连锁</span></div>
+        <i class="combo-bar" id="comboBar"></i>
+      </div>
+
+      <div class="ov show" id="overlay">
+        <div class="ov-in">
+          <p class="ov-eye" id="ovEyebrow">拆袋</p>
           <h2 class="ov-title" id="ovTitle">和成天下</h2>
           <p class="ov-desc" id="ovDesc">两枚同款，合成更高一档。<br />从一粒青果起，看看你能嚼到哪一层。</p>
-          <p class="ov-result" id="ovResult"></p>
-          <button class="btn-primary" id="ovBtn" type="button">开嚼</button>
+          <div class="ov-stats" id="ovStats"></div>
+          <button class="btn-main" id="ovBtn" type="button">开嚼</button>
         </div>
       </div>
-    </section>
+    </div>
 
-    <aside class="hud">
-      <div class="hud-block">
-        <span class="label">得分</span>
-        <strong class="score" id="score">0</strong>
-        <span class="best">最高 <b id="best">0</b></span>
+    <aside class="col col-right">
+      <div class="next-box">
+        <span class="cap">下一个</span>
+        <div class="orb orb-lg" id="nextOrb">青</div>
+        <span class="orb-name" id="nextName">青果</span>
+        <div class="queue" id="queue">
+          <span class="orb orb-sm" id="q0"></span>
+          <span class="orb orb-sm" id="q1"></span>
+        </div>
       </div>
 
-      <div class="hud-block next-block">
-        <span class="label">下一个</span>
-        <div class="next-orb" id="nextOrb">青</div>
-        <span class="next-name" id="nextName">青果</span>
-      </div>
+      <button class="hold-box" id="holdBtn" type="button" title="存入或换出待用造物（H）">
+        <span class="cap">待用</span>
+        <span class="hold-orb" id="holdOrb">—</span>
+      </button>
 
-      <div class="hud-actions">
-        <button class="ghost-btn" id="soundBtn" type="button" aria-pressed="true">音效 · 开</button>
-        <button class="ghost-btn" id="themeBtn" type="button" title="切换主题">主题 · 槟榔</button>
-        <button class="ghost-btn" id="restartBtn" type="button">再开一袋</button>
-      </div>
+      <dl class="runstats">
+        <div><dt>连锁峰值</dt><dd id="statChain">×1</dd></div>
+        <div><dt>合成</dt><dd id="statMerges">0</dd></div>
+        <div><dt>用时</dt><dd id="statTime">00:00</dd></div>
+      </dl>
 
-      <p class="hint" id="hint">移动瞄准 · 点击落下<br />← → 微调 · 空格落下<br />（玩梗主题 · 槟榔有害健康）</p>
-
-      <div class="seal" id="seal" aria-hidden="true">越嚼<br />越香</div>
+      <p class="hint" id="hint">点击落子 · H 换待用</p>
     </aside>
   </main>
-
-  <section class="codex" aria-label="造化图鉴">
-    <ol class="codex-list" id="codexList"></ol>
-  </section>
 </div>
 
-<noscript><p style="color:#ddd;text-align:center;padding:40px">需要开启 JavaScript 才能造物。</p></noscript>
+<noscript><p style="padding:40px;text-align:center">需要开启 JavaScript 才能造物。</p></noscript>
 
 <script src="src/levels.js"></script>
 <script src="src/themes.js"></script>
