@@ -15,6 +15,8 @@ window.SH = window.SH || {};
   const CORRECTION = 0.72;   // 位置修正比例
   const ITERATIONS = 2;      // 每步碰撞迭代次数
   const MAX_SPEED = 3200;
+  const MAGNET_RANGE = 3.0;    // 磁吸范围：中心距 ≤ 半径和 × 3.0 时开始吸（约两倍球径的空隙）
+  const MAGNET_SPEED = 0.7;    // 磁吸靠近速度上限（球半径/秒）：克制，看得出被"拽"，不瞬移
 
   class Ball {
     constructor(x, y, level, r) {
@@ -40,6 +42,7 @@ window.SH = window.SH || {};
       this.gravity = opts.gravity ?? 2500;
       this.levels = opts.levels;
       this.onMerge = opts.onMerge || function () {};
+      this.magnet = opts.magnet !== false;   // 同级磁吸，默认开
       this.balls = [];
       this._acc = 0;
     }
@@ -111,8 +114,78 @@ window.SH = window.SH || {};
         }
       }
 
-      // 3. 同级合成
+      // 3. 同级磁吸：位置修正之后把同级球拉近，再走一遍碰撞，保证被拉进别的球里时会被挡开
+      if (this.magnet) {
+        for (let i = 0; i < balls.length; i++) {
+          if (!balls[i].dead) this._pull(balls[i], balls, dt);
+        }
+        for (let i = 0; i < balls.length; i++) {
+          const a = balls[i];
+          if (a.dead) continue;
+          for (let j = i + 1; j < balls.length; j++) {
+            if (!balls[j].dead) this._collide(a, balls[j]);
+          }
+        }
+        for (let i = 0; i < balls.length; i++) {
+          if (!balls[i].dead) this._walls(balls[i]);
+        }
+      }
+
+      // 4. 同级合成
       this._merge();
+    }
+
+    /** 同级磁吸：范围内同类越近吸力越强，近到相切时正好收手，交给碰撞与合成 */
+    _pull(b, balls, dt) {
+      for (let k = 0; k < balls.length; k++) {
+        const o = balls[k];
+        if (o === b || o.dead || o.level !== b.level) continue;
+        const dx = o.x - b.x;
+        const dy = o.y - b.y;
+        const reach = (b.r + o.r) * MAGNET_RANGE;
+        const d2 = dx * dx + dy * dy;
+        if (d2 >= reach * reach) continue;
+        const d = Math.sqrt(d2);
+        const gap = d - (b.r + o.r);          // 间隙：负值即已接触
+        if (gap <= 0.5) continue;
+        const nx = dx / d;
+        const ny = dy / d;
+        const t = 1 - gap / (reach - (b.r + o.r));   // 0→1，越靠越强
+
+        // 沿连线的靠近速度接近上限时收手，免得两球在磁力与碰撞间来回弹
+        const closing = (o.vx - b.vx) * nx + (o.vy - b.vy) * ny;
+        if (closing > MAGNET_SPEED * Math.min(b.r, o.r)) continue;
+
+        // 借速度：沿连线给两者往彼此靠的速度。原地停住的球有静摩擦，等它自己滑过去是耗很久的
+        const speed = Math.min(gap / (2 * dt), MAGNET_SPEED * Math.min(b.r, o.r) * (0.35 + t * 0.65));
+        const gain = speed / (b.invM + o.invM);
+        b.vx += nx * gain * b.invM;
+        b.vy += ny * gain * b.invM;
+        o.vx -= nx * gain * o.invM;
+        o.vy -= ny * gain * o.invM;
+      }
+    }
+
+    /** 正在互相吸引的同级球对（中点 + 强度），供渲染层在两者之间画一缕微光 */
+    magnetLinks() {
+      const out = [];
+      const balls = this.balls;
+      for (let i = 0; i < balls.length; i++) {
+        const a = balls[i];
+        for (let j = i + 1; j < balls.length; j++) {
+          const o = balls[j];
+          if (o.level !== a.level) continue;
+          const dx = o.x - a.x;
+          const dy = o.y - a.y;
+          const reach = (a.r + o.r) * MAGNET_RANGE;
+          const d2 = dx * dx + dy * dy;
+          if (d2 >= reach * reach) continue;
+          const d = Math.sqrt(d2);
+          if (d - (a.r + o.r) <= 0.5) continue;
+          out.push({ x: (a.x + o.x) / 2, y: (a.y + o.y) / 2, t: 1 - (d - (a.r + o.r)) / (reach - (a.r + o.r)) });
+        }
+      }
+      return out;
     }
 
     _walls(b) {
@@ -129,9 +202,10 @@ window.SH = window.SH || {};
 
       if (b.y + b.r > H) {
         b.y = H - b.r;
+        // 回弹后速度极小（< 8）才归零，算"贴地"；门限再高的话磁吸也拽不动埋在地里的球
         if (b.vy > 0) {
           b.vy = -b.vy * 0.16;
-          if (Math.abs(b.vy) < 42) b.vy = 0;
+          if (b.vy < 8) b.vy = 0;
         }
         b.vx *= 0.9;
       }

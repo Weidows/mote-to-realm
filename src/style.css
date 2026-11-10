@@ -79,7 +79,7 @@ body {
 
 /* ------------------------------------------------------------ 版面 */
 .desk {
-  max-width: 1160px;
+  max-width: 1440px;
   margin: 0 auto;
   min-height: 100dvh;
   padding: clamp(16px, 2.6vh, 26px) clamp(16px, 3vw, 40px) clamp(18px, 3vh, 34px);
@@ -173,8 +173,8 @@ body {
 /* ------------------------------------------------------------ 三栏 */
 .board-area {
   display: grid;
-  grid-template-columns: 178px auto 178px;
-  gap: clamp(18px, 2.6vw, 38px);
+  grid-template-columns: clamp(150px, 12vw, 186px) auto clamp(150px, 12vw, 186px);
+  gap: clamp(14px, 2vw, 40px);
   justify-content: center;
   align-items: start;
 }
@@ -291,7 +291,8 @@ body {
 /* ------------------------------------------------------------ 漆盘 */
 .tray {
   position: relative;
-  width: min(calc(76vh * 46 / 64), 512px);
+  /* 宽度：高度铺满 80vh，同时不超过可用横宽的 46%；极宽屏再往下见 aspect-ratio 规则 */
+  width: min(calc(80vh * 46 / 64), 46vw);
   aspect-ratio: 46 / 64;
   background: var(--board);
   border-radius: 9px;
@@ -634,6 +635,28 @@ canvas {
   outline-offset: 2px;
 }
 
+/* ------------------------------------------------------------ 中等宽屏：侧栏收窄，让漆盘主导 */
+@media (max-width: 1280px) and (min-width: 1001px) {
+  .board-area { grid-template-columns: 150px auto 150px; gap: clamp(14px, 1.8vw, 26px); }
+}
+
+/* ------------------------------------------------------------ 大屏：盘随屏幕长大，侧栏的圆球与字号也跟着放大，不显得空旷 */
+@media (min-width: 1001px) and (min-aspect-ratio: 3/2) {
+  .tray { width: 20vw; min-width: 42vh; }
+}
+
+@media (min-width: 1440px) {
+  .orb-lg { width: clamp(88px, 7vw, 112px); height: clamp(88px, 7vw, 112px); font-size: clamp(34px, 2.8vw, 44px); }
+  .hold-orb { width: clamp(46px, 3.6vw, 58px); height: clamp(46px, 3.6vw, 58px); font-size: clamp(17px, 1.4vw, 22px); }
+  .orb-sm { width: clamp(34px, 2.6vw, 42px); height: clamp(34px, 2.6vw, 42px); font-size: clamp(13px, 1vw, 16px); }
+  .num { font-size: clamp(40px, 3.4vw, 58px); }
+  .step i { width: clamp(21px, 1.7vw, 26px); height: clamp(21px, 1.7vw, 26px); font-size: clamp(9.5px, 0.78vw, 11.5px); }
+  .cap { font-size: clamp(10.5px, 0.78vw, 12px); }
+  .step span, .orb-name, .hint { font-size: clamp(11px, 0.82vw, 13px); }
+  .runstats dd { font-size: clamp(13px, 0.95vw, 15px); }
+  .col { gap: clamp(20px, 2.6vh, 34px); }
+}
+
 /* ------------------------------------------------------------ 窄屏 */
 @media (max-width: 1000px) {
   .desk { padding: 14px 14px 22px; gap: 12px; }
@@ -649,7 +672,7 @@ canvas {
   .tool { padding: 7px 9px; font-size: 11px; }
 
   .board-area {
-    --tray: min(94vw, 512px, calc(62vh * 46 / 64));
+    --tray: min(94vw, calc(64vh * 46 / 64));
     grid-template-columns: minmax(0, 1fr);
     justify-items: center;
     gap: 10px;
@@ -725,7 +748,13 @@ canvas {
 }
 
 @media (max-height: 720px) and (min-width: 1001px) {
-  .tray { width: min(calc(86vh * 46 / 64), 512px); }
+  .tray { width: min(calc(88vh * 46 / 64), 46vw); }
+  .desk { gap: 12px; }
+  .col { gap: 14px; }
+  .orb-lg { width: 66px; height: 66px; font-size: 26px; }
+  .hold-orb { width: 38px; height: 38px; font-size: 15px; }
+  .step { padding: 1px 0; }
+  .num { font-size: 34px; margin: 6px 0 6px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -13,12 +13,18 @@
   let GLYPH_FONT = THEME.glyphFont;
   let PAL = THEME.palette;
 
-  // 逻辑画布尺寸
-  const W = 460;
-  const H = 640;
-  const DANGER_Y = 112;        // 越线判负
-  const DROP_Y = 58;           // 出生高度
-  const FLOOR_Y = H - 13;      // 落点地面（留出器底一线）
+  // 逻辑画布尺寸：宽度随窗口变，高度恒为 4:3 比例的 1.25 倍
+  // 球半径是逻辑单位，因此窗口越宽，漆盘看得越多、球相对越小 —— 大屏不再受 512px 上限束缚
+  const BASE_W = 460;
+  const BASE_H = 640;
+  const W_MIN = 400;
+  const W_MAX = 1280;
+  const ASPECT = BASE_W / BASE_H;
+  let W = BASE_W;
+  let H = BASE_H;
+  let DANGER_Y = H * 0.175;    // 越线判负
+  let DROP_Y = H * 0.09;       // 出生高度
+  let FLOOR_Y = H - 13;        // 落点地面（留出器底一线）
   const COOLDOWN = 0.22;       // 两次落子间隔
   const DANGER_LIMIT = 1.7;    // 越线多久判负
   const CHAIN_WINDOW = 1.6;    // 连锁窗口
@@ -58,6 +64,8 @@
     soundBtn: document.getElementById('soundBtn'),
     soundState: document.getElementById('soundState'),
     themeBtn: document.getElementById('themeBtn'),
+    magnetBtn: document.getElementById('magnetBtn'),
+    magnetState: document.getElementById('magnetState'),
     themeTag: document.getElementById('themeTag'),
     restartBtn: document.getElementById('restartBtn'),
     banner: document.getElementById('banner'),
@@ -130,12 +138,16 @@
   }
 
   // ---------------------------------------------------------------- 世界
+  const magnetKey = 'ht.magnet';
+  let magnetOn = load(magnetKey, true) !== false;
+
   function createWorld() {
     return new SH.World({
       W: W,
       H: H,
       floorY: FLOOR_Y,
       levels: LEVELS,
+      magnet: magnetOn,
       gravity: 2500,
       onMerge: handleMerge,
     });
@@ -562,6 +574,10 @@
     el.hint.textContent = t.copy.hint;
     el.fineprint.textContent = t.copy.fineprint || '';
     el.themeTag.textContent = t.tag;
+    if (el.magnetState) {
+      el.magnetState.textContent = magnetOn ? '开' : '关';
+      el.magnetBtn.setAttribute('aria-pressed', String(magnetOn));
+    }
     el.themeBtn.title = '切换主题（T）· 当前「' + t.title + '」';
     el.themeBtn.setAttribute('aria-label', '切换主题，当前「' + t.title + '」');
     setFavicon(t);
@@ -585,9 +601,35 @@
   }
 
   // ---------------------------------------------------------------- 绘制
+  function relayout() {
+    DANGER_Y = H * 0.175;
+    DROP_Y = H * 0.09;
+    FLOOR_Y = H - 13;
+    if (world) {
+      world.W = W;
+      world.H = H;
+      world.floorY = FLOOR_Y;
+      // 窗口变窄时，贴边的造物可能已越界：先收回盘内，免得卡在墙外
+      for (let i = 0; i < world.balls.length; i++) {
+        const b = world.balls[i];
+        b.x = clamp(b.x, b.r, W - b.r);
+      }
+    }
+  }
+
   function resize() {
     const rect = canvas.getBoundingClientRect();
     if (!rect.width || !rect.height) return;
+
+    // 逻辑宽度跟随漆盘实际宽度：球的大小与盘上显示保持固定比例，同时不超出比例不一的极端屏幕
+    const fitW = Math.round(clamp(rect.width * (BASE_H / rect.height) * ASPECT, W_MIN, W_MAX));
+    if (fitW !== W) {
+      W = fitW;
+      H = Math.round(W / ASPECT);
+      relayout();
+      seedStars();                 // 星屑按新尺寸重铺
+    }
+
     const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
     canvas.width = Math.round(rect.width * dpr);
     canvas.height = Math.round(rect.height * dpr);
@@ -867,8 +909,25 @@
     ctx.restore();
 
     ctx.globalAlpha = ready ? 1 : 0.34;
-    drawBall({ x: x, y: DROP_Y + Math.sin(state.time * 3.2) * 1.4, r: r, level: lv, age: 9, vy: 0 });
+    drawBall({ x: x, y: DROP_Y + Math.sin(state.time * 3.2) * 1.4, r: r, level: lv, age: 9, vy: 0, vx: 0 });
     ctx.globalAlpha = 1;
+  }
+
+  /** 磁吸微光：吸附中的同级球之间浮起一缕金晕，一眼看出它们正在被拉近 */
+  function drawMagnetGlow() {
+    if (!world.magnetLinks) return;
+    const links = world.magnetLinks();
+    for (let i = 0; i < links.length; i++) {
+      const l = links[i];
+      const r = 10 + l.t * 14;
+      const g = ctx.createRadialGradient(l.x, l.y, 0, l.x, l.y, r);
+      g.addColorStop(0, 'rgba(255, 214, 140,' + (0.05 + l.t * 0.16) + ')');
+      g.addColorStop(1, 'rgba(255, 214, 140, 0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(l.x, l.y, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 
   function draw() {
@@ -882,6 +941,7 @@
     drawDangerLine();
 
     if (world) {
+      if (world.magnet) drawMagnetGlow();
       for (let i = 0; i < world.balls.length; i++) {
         const b = world.balls[i];
         if (!b.dead) drawBall(b);
@@ -942,6 +1002,17 @@
     if (on) { SH.Audio.unlock(); SH.Audio.drop(); }
   });
 
+  /** 磁吸：只影响物理步里的吸引力，开关随时生效，不必重开 */
+  function toggleMagnet() {
+    magnetOn = !magnetOn;
+    save(magnetKey, magnetOn);
+    if (world) world.magnet = magnetOn;
+    el.magnetState.textContent = magnetOn ? '开' : '关';
+    el.magnetBtn.setAttribute('aria-pressed', String(magnetOn));
+  }
+
+  el.magnetBtn.addEventListener('click', toggleMagnet);
+
   // ---------------------------------------------------------------- 主循环
   let last = 0;
 
@@ -996,6 +1067,9 @@
       toggleHold: toggleHold,
       applyTheme: applyTheme,
       toggleTheme: toggleTheme,
+      toggleMagnet: toggleMagnet,
+      get magnet() { return magnetOn; },
+      get size() { return { W: W, H: H }; },
       addBall: function (x, y, level) { return world.add(x, y, level); },
     };
   }
